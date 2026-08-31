@@ -1,4 +1,6 @@
-import { useState } from "react"
+import { useLifeOS } from "./context/LifeOSContext.jsx";
+import useLocalStorage from "./hooks/useLocalStorage";
+import { useEffect, useState } from "react";
 
 
 /* =========================================================
@@ -431,6 +433,7 @@ function LandingPage({ startApp }) {
 ========================================================= */
 
 function Dashboard({ page, setPage, goHome }) {
+  const { user, notifications, spaces } = useLifeOS();
 
   const currentItem =
     menuItems.find((item) => item.id === page) || menuItems[0]
@@ -719,6 +722,12 @@ function Dashboard({ page, setPage, goHome }) {
                 className="h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 pl-12 pr-24 text-sm outline-none transition focus:border-indigo-300 focus:bg-white"
                 placeholder="Search anything... (bills, tasks, docs, plans, people...)"
               />
+
+              {search && (
+  <p className="mt-2 px-2 text-xs text-slate-400">
+    Searching LifeOS for: <span className="font-semibold text-indigo-600">{search}</span>
+  </p>
+)}
 
               <span className="absolute right-3 top-1/2 -translate-y-1/2 rounded-lg bg-white px-3 py-1.5 text-xs font-semibold text-slate-400 shadow-sm">
                 Ctrl + K
@@ -1681,52 +1690,214 @@ function MoneyPage() {
 ========================================================= */
 
 function TasksPage() {
+  const [tasks, setTasks] = useLocalStorage("lifeos-tasks", [
+    {
+      id: 1,
+      title: "Complete DBMS submission",
+      due: "Tomorrow",
+      completed: false,
+    },
+    {
+      id: 2,
+      title: "Prepare presentation",
+      due: "Friday",
+      completed: false,
+    },
+    {
+      id: 3,
+      title: "Pay electricity bill",
+      due: "In 3 days",
+      completed: false,
+    },
+  ]);
+
+  const [newTask, setNewTask] = useState("");
+  const [newDue, setNewDue] = useState("");
+
+  const [pendingCount, setPendingCount] = useState(0);
+
+useEffect(() => {
+  const pending = tasks.filter((task) => !task.completed).length;
+  setPendingCount(pending);
+}, [tasks]);
+
+  function addTask() {
+    if (!newTask.trim()) return;
+
+    const task = {
+      id: Date.now(),
+      title: newTask.trim(),
+      due: newDue.trim() || "No deadline",
+      completed: false,
+    };
+
+    setTasks((currentTasks) => [...currentTasks, task]);
+
+    setNewTask("");
+    setNewDue("");
+  }
+
+  function toggleTask(id) {
+    setTasks((currentTasks) =>
+      currentTasks.map((task) =>
+        task.id === id
+          ? { ...task, completed: !task.completed }
+          : task
+      )
+    );
+  }
+
+  function deleteTask(id) {
+    setTasks((currentTasks) =>
+      currentTasks.filter((task) => task.id !== id)
+    );
+  }
 
   return (
+    <div className="space-y-8">
+      {/* Header */}
+      <div>
+        <p className="text-sm font-medium text-indigo-500">
+          LifeOS Tasks
+        </p>
 
-    <div className="space-y-7">
+        <h1 className="mt-2 text-3xl font-bold tracking-tight text-slate-900">
+          Your Tasks
+        </h1>
 
-      <PageIntro
-        eyebrow="Things To Do"
-        title="Your Tasks"
-        text="Keep deadlines, responsibilities and commitments in one place."
-      />
+        <p className="mt-2 text-slate-500">
+          Keep important things out of your head and inside LifeOS.
+        </p>
+      </div>
 
+      {/* Add Task */}
+      <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+        <h2 className="text-lg font-semibold text-slate-900">
+          Add a task
+        </h2>
 
-      <Panel title="Upcoming Tasks">
-
-        <div className="space-y-3">
-
-          <Task
-            title="DBMS Submission"
-            category="College"
-            due="Tomorrow"
+        <div className="mt-4 grid gap-3 md:grid-cols-[1fr_220px_auto]">
+          <input
+            value={newTask}
+            onChange={(e) => setNewTask(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") addTask();
+            }}
+            placeholder="What do you need to remember?"
+            className="rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none transition focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
           />
 
-          <Task
-            title="Prepare project presentation"
-            category="Project"
-            due="Friday"
+          <input
+            value={newDue}
+            onChange={(e) => setNewDue(e.target.value)}
+            placeholder="Deadline"
+            className="rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none transition focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
           />
 
-          <Task
-            title="Pay electricity bill"
-            category="Home"
-            due="In 3 days"
-          />
+          <button
+            onClick={addTask}
+            className="rounded-2xl bg-slate-900 px-6 py-3 text-sm font-semibold text-white transition hover:bg-slate-700"
+          >
+            + Add Task
+          </button>
+        </div>
+      </div>
 
-          <Task
-            title="Review semester notes"
-            category="Study"
-            due="Next week"
-          />
+      {/* Task List */}
+      <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-lg font-semibold text-slate-900">
+              Upcoming Tasks
+            </h2>
 
+            <p className="mt-1 text-sm text-slate-500">
+              {pendingCount} pending
+            </p>
+          </div>
+
+          <div className="rounded-full bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-600">
+            {tasks.length} total
+          </div>
         </div>
 
-      </Panel>
+        <div className="mt-5 space-y-3">
+          {tasks.length === 0 ? (
+            <div className="rounded-2xl bg-slate-50 p-8 text-center">
+              <p className="font-medium text-slate-700">
+                No tasks yet 🎉
+              </p>
 
+              <p className="mt-1 text-sm text-slate-500">
+                Add something you want LifeOS to remember.
+              </p>
+            </div>
+          ) : (
+            tasks.map((task) => (
+              <div
+                key={task.id}
+                className="flex items-center gap-4 rounded-2xl border border-slate-100 p-4 transition hover:border-slate-200 hover:shadow-sm"
+              >
+                <button
+                  onClick={() => toggleTask(task.id)}
+                  className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 transition ${
+                    task.completed
+                      ? "border-indigo-500 bg-indigo-500 text-white"
+                      : "border-slate-300 bg-white"
+                  }`}
+                  aria-label={`Mark ${task.title} as ${
+                    task.completed ? "incomplete" : "complete"
+                  }`}
+                >
+                  {task.completed && "✓"}
+                </button>
+
+                <div className="min-w-0 flex-1">
+                  <p
+                    className={`font-medium ${
+                      task.completed
+                        ? "text-slate-400 line-through"
+                        : "text-slate-800"
+                    }`}
+                  >
+                    {task.title}
+                  </p>
+
+                  <p className="mt-1 text-xs text-slate-400">
+                    Due: {task.due}
+                  </p>
+                </div>
+
+                <button
+                  onClick={() => deleteTask(task.id)}
+                  className="rounded-xl px-3 py-2 text-xs font-medium text-slate-400 transition hover:bg-red-50 hover:text-red-500"
+                >
+                  Delete
+                </button>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+
+      {/* Hook explanation */}
+      <div className="rounded-3xl border border-indigo-100 bg-indigo-50/60 p-6">
+        <p className="text-xs font-semibold uppercase tracking-wider text-indigo-500">
+          React Hooks in LifeOS
+        </p>
+
+        <h3 className="mt-2 text-lg font-semibold text-slate-900">
+          Your tasks are stored automatically
+        </h3>
+
+        <p className="mt-2 text-sm leading-6 text-slate-600">
+          LifeOS uses a custom <code>useLocalStorage</code> hook to
+          keep your tasks saved in the browser. Try adding a task and
+          refreshing the page.
+        </p>
+      </div>
     </div>
-  )
+  );
 }
 
 
