@@ -433,8 +433,12 @@ function LandingPage({ startApp }) {
 ========================================================= */
 
 function Dashboard({ page, setPage, goHome }) {
-  const { user, notifications, spaces } = useLifeOS();
-
+ const {
+  user,
+  notifications,
+  spaces,
+  totalExpenses,
+} = useLifeOS();
   const currentItem =
     menuItems.find((item) => item.id === page) || menuItems[0]
 
@@ -784,7 +788,10 @@ function Dashboard({ page, setPage, goHome }) {
 
           <div className="mx-auto w-full max-w-[1600px]">
 
-            {page === "dashboard" && <DashboardHome setPage={setPage} />}
+            {page === "dashboard" && <DashboardHome
+  setPage={setPage}
+  totalExpenses={totalExpenses}
+/>}
 
             {page === "buddy" && <BuddyPage />}
 
@@ -813,7 +820,7 @@ function Dashboard({ page, setPage, goHome }) {
    DASHBOARD HOME
 ========================================================= */
 
-function DashboardHome({ setPage }) {
+function DashboardHome({ setPage, totalExpenses }) {
 
   return (
     <div className="space-y-7">
@@ -848,9 +855,9 @@ function DashboardHome({ setPage }) {
 
         <DashboardStat
           icon="↗"
-          label="Planned Expenses"
-          value="₹35,000"
-          text="Regular monthly spending"
+          label="Expenses"
+          value={`₹${totalExpenses.toLocaleString()}`}
+          text="From shared state"
         />
 
         <DashboardStat
@@ -969,70 +976,18 @@ function DashboardHome({ setPage }) {
 /* =========================================================
    SPACES
 ========================================================= */
-
 function SpacesPage() {
+  const [filter, setFilter] = useState("All");
+  const [showCreate, setShowCreate] = useState(false);
 
-  const [filter, setFilter] = useState("All")
+  const [spaceName, setSpaceName] = useState("");
+  const [spaceType, setSpaceType] = useState("Family");
 
-  const [showCreate, setShowCreate] = useState(false)
-
-  const [spaces, setSpaces] = useState([
-    {
-      id: 1,
-      title: "Talreja Family",
-      type: "Family",
-      icon: "👨‍👩‍👧",
-      description: "Our shared family space for all important things.",
-      pending: 8,
-      members: 4,
-      color: "from-emerald-100 to-green-50",
-    },
-
-    {
-      id: 2,
-      title: "Goa Trip 🌴",
-      type: "Trip",
-      icon: "🏕️",
-      description: "All trip plans, bookings and things to remember.",
-      pending: 5,
-      members: 6,
-      color: "from-orange-100 to-amber-50",
-    },
-
-    {
-      id: 3,
-      title: "Semester 5",
-      type: "College",
-      icon: "🎓",
-      description: "Deadlines, assignments and important notes.",
-      pending: 4,
-      members: 6,
-      color: "from-violet-100 to-purple-50",
-    },
-
-    {
-      id: 4,
-      title: "Riya's Birthday 🎉",
-      type: "Event",
-      icon: "🎂",
-      description: "Birthday party planning and arrangements.",
-      pending: 3,
-      members: 3,
-      color: "from-pink-100 to-rose-50",
-    },
-
-    {
-      id: 5,
-      title: "Manali Camping 🏕️",
-      type: "Trip",
-      icon: "🏔️",
-      description: "Camping checklist, gear and travel details.",
-      pending: 6,
-      members: 4,
-      color: "from-sky-100 to-emerald-50",
-    },
-  ])
-
+  const {
+    spaces,
+    addSpace,
+    deleteSpace,
+  } = useLifeOS();
 
   const filters = [
     "All",
@@ -1041,45 +996,61 @@ function SpacesPage() {
     "College",
     "Event",
     "Other",
-  ]
-
+  ];
 
   const filteredSpaces =
     filter === "All"
       ? spaces
-      : spaces.filter((space) => space.type === filter)
+      : spaces.filter((space) => space.type === filter);
 
+  function handleCreateSpace() {
+    if (!spaceName.trim()) return;
 
-  function createSpace() {
+    const icons = {
+      Family: "👨‍👩‍👧",
+      Trip: "🏕️",
+      College: "🎓",
+      Event: "🎉",
+      Other: "✨",
+    };
+
+    const colors = {
+      Family: "from-emerald-100 to-green-50",
+      Trip: "from-orange-100 to-amber-50",
+      College: "from-violet-100 to-purple-50",
+      Event: "from-pink-100 to-rose-50",
+      Other: "from-indigo-100 to-violet-50",
+    };
 
     const newSpace = {
-      id: Date.now(),
-      title: "New Space",
-      type: "Other",
-      icon: "✨",
-      description: "A new shared LifeOS space.",
-      pending: 0,
+      title: spaceName.trim(),
+      type: spaceType,
+      icon: icons[spaceType],
+      description: `A shared ${spaceType.toLowerCase()} space for plans, reminders and important things.`,
       members: 1,
-      color: "from-indigo-100 to-violet-50",
-    }
+      color: colors[spaceType],
+    };
 
-    setSpaces((current) => [...current, newSpace])
+    addSpace(newSpace);
 
-    setShowCreate(false)
-
-    setFilter("All")
+    setSpaceName("");
+    setSpaceType("Family");
+    setShowCreate(false);
+    setFilter("All");
   }
 
+  function closeCreateModal() {
+    setShowCreate(false);
+    setSpaceName("");
+    setSpaceType("Family");
+  }
 
   return (
     <div className="space-y-7">
 
-
       {/* Header */}
       <section className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
-
         <div>
-
           <p className="text-sm font-bold uppercase tracking-[0.18em] text-slate-400">
             Shared Life
           </p>
@@ -1092,9 +1063,7 @@ function SpacesPage() {
             Organize life together in shared spaces.
             Keep everyone on the same page.
           </p>
-
         </div>
-
 
         <button
           onClick={() => setShowCreate(true)}
@@ -1102,7 +1071,6 @@ function SpacesPage() {
         >
           + Create Space
         </button>
-
       </section>
 
 
@@ -1112,7 +1080,6 @@ function SpacesPage() {
         <div className="flex gap-2 overflow-x-auto pb-1">
 
           {filters.map((item) => (
-
             <button
               key={item}
               onClick={() => setFilter(item)}
@@ -1124,14 +1091,11 @@ function SpacesPage() {
             >
               {item}
             </button>
-
           ))}
 
         </div>
 
-
         <div className="hidden items-center gap-2 sm:flex">
-
           <button className="flex h-10 w-10 items-center justify-center rounded-xl border border-indigo-200 bg-white text-indigo-600">
             ▦
           </button>
@@ -1139,7 +1103,6 @@ function SpacesPage() {
           <button className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-400">
             ☷
           </button>
-
         </div>
 
       </div>
@@ -1148,17 +1111,15 @@ function SpacesPage() {
       {/* Content */}
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_255px]">
 
-
         {/* Cards */}
         <div className="grid gap-5 md:grid-cols-2 2xl:grid-cols-3">
 
           {filteredSpaces.map((space) => (
-
             <SpaceCard
               key={space.id}
               space={space}
+              onDelete={deleteSpace}
             />
-
           ))}
 
 
@@ -1193,13 +1154,11 @@ function SpacesPage() {
         {/* Right column */}
         <div className="space-y-5">
 
-
           {/* Upcoming */}
           <Panel
             title="Upcoming across spaces"
             action="View all"
           >
-
             <div className="space-y-2">
 
               <SpaceReminder
@@ -1244,11 +1203,9 @@ function SpacesPage() {
 
             </div>
 
-
             <button className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200 py-3 text-sm font-bold text-slate-500 transition hover:bg-slate-50 hover:text-slate-950">
               + Add Reminder
             </button>
-
           </Panel>
 
 
@@ -1281,7 +1238,7 @@ function SpacesPage() {
           </Panel>
 
 
-          {/* Small information card */}
+          {/* Information card */}
           <div className="hidden overflow-hidden rounded-[2rem] bg-gradient-to-br from-indigo-50 to-sky-50 p-6 lg:block">
 
             <p className="text-sm font-bold leading-6 text-slate-700">
@@ -1302,7 +1259,6 @@ function SpacesPage() {
 
       {/* Create modal */}
       {showCreate && (
-
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/30 p-5 backdrop-blur-sm">
 
           <div className="w-full max-w-md rounded-[2rem] bg-white p-7 shadow-2xl">
@@ -1310,7 +1266,6 @@ function SpacesPage() {
             <div className="flex items-start justify-between">
 
               <div>
-
                 <p className="text-sm font-bold uppercase tracking-widest text-slate-400">
                   New Space
                 </p>
@@ -1318,11 +1273,10 @@ function SpacesPage() {
                 <h3 className="mt-2 text-2xl font-bold">
                   Create a shared space
                 </h3>
-
               </div>
 
               <button
-                onClick={() => setShowCreate(false)}
+                onClick={closeCreateModal}
                 className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-100 text-slate-500"
               >
                 ×
@@ -1331,46 +1285,76 @@ function SpacesPage() {
             </div>
 
 
-            <div className="mt-7 space-y-3">
+            {/* Space name */}
+            <div className="mt-7">
 
-              <CreateOption
-                icon="👨‍👩‍👧"
-                title="Family"
-                text="Bills, reminders and household plans"
-                onClick={() => createSpace()}
-              />
+              <label className="text-sm font-bold text-slate-700">
+                Space Name
+              </label>
 
-              <CreateOption
-                icon="🏕️"
-                title="Trip"
-                text="Travel plans, checklists and bookings"
-                onClick={() => createSpace()}
-              />
-
-              <CreateOption
-                icon="🎓"
-                title="College"
-                text="Assignments, deadlines and projects"
-                onClick={() => createSpace()}
-              />
-
-              <CreateOption
-                icon="🎉"
-                title="Event"
-                text="Plan birthdays, parties and occasions"
-                onClick={() => createSpace()}
+              <input
+                type="text"
+                value={spaceName}
+                onChange={(e) => setSpaceName(e.target.value)}
+                placeholder="e.g. Goa Trip, Family, Project..."
+                className="mt-2 w-full rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none transition focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100"
               />
 
             </div>
 
+
+            {/* Space type */}
+            <div className="mt-5">
+
+              <label className="text-sm font-bold text-slate-700">
+                Space Type
+              </label>
+
+              <div className="mt-3 grid grid-cols-2 gap-2">
+
+                {[
+                  ["Family", "👨‍👩‍👧"],
+                  ["Trip", "🏕️"],
+                  ["College", "🎓"],
+                  ["Event", "🎉"],
+                  ["Other", "✨"],
+                ].map(([type, icon]) => (
+
+                  <button
+                    key={type}
+                    onClick={() => setSpaceType(type)}
+                    className={`rounded-xl border px-4 py-3 text-left text-sm font-semibold transition ${
+                      spaceType === type
+                        ? "border-indigo-500 bg-indigo-50 text-indigo-700"
+                        : "border-slate-200 bg-white text-slate-500 hover:bg-slate-50"
+                    }`}
+                  >
+                    {icon} {type}
+                  </button>
+
+                ))}
+
+              </div>
+
+            </div>
+
+
+            {/* Create button */}
+            <button
+              onClick={handleCreateSpace}
+              disabled={!spaceName.trim()}
+              className="mt-6 w-full rounded-xl bg-indigo-600 px-5 py-3.5 text-sm font-bold text-white shadow-lg shadow-indigo-200 transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              Create Space
+            </button>
+
           </div>
 
         </div>
-
       )}
 
     </div>
-  )
+  );
 }
 
 
@@ -1378,14 +1362,27 @@ function SpacesPage() {
    SPACE CARD
 ========================================================= */
 
-function SpaceCard({ space }) {
+function SpaceCard({ space, onDelete }) {
+
+  function handleDelete(e) {
+    e.stopPropagation();
+
+    const confirmed = window.confirm(
+      `Are you sure you want to delete "${space.title}"?`
+    );
+
+    if (confirmed) {
+      onDelete(space.id);
+    }
+  }
 
   return (
-
-    <button className="group overflow-hidden rounded-[2rem] border border-slate-200 bg-white text-left shadow-sm transition hover:-translate-y-1 hover:shadow-xl">
+    <div className="group overflow-hidden rounded-[2rem] border border-slate-200 bg-white text-left shadow-sm transition hover:-translate-y-1 hover:shadow-xl">
 
       {/* Illustration */}
-      <div className={`relative flex h-44 items-center justify-center overflow-hidden bg-gradient-to-br ${space.color}`}>
+      <div
+        className={`relative flex h-44 items-center justify-center overflow-hidden bg-gradient-to-br ${space.color}`}
+      >
 
         <div className="absolute -right-5 -top-10 h-32 w-32 rounded-full bg-white/30" />
 
@@ -1395,12 +1392,21 @@ function SpaceCard({ space }) {
           {space.icon}
         </div>
 
-
+        {/* Type */}
         <span className="absolute right-4 top-4 rounded-full bg-white/90 px-3 py-1.5 text-xs font-bold text-slate-600 shadow-sm">
           {space.type}
         </span>
 
+        {/* DELETE BUTTON */}
+        <button
+          onClick={handleDelete}
+          className="absolute left-4 top-4 flex h-9 w-9 items-center justify-center rounded-xl bg-white/90 text-sm shadow-sm transition hover:bg-red-50 hover:text-red-500"
+          title="Delete space"
+        >
+          🗑️
+        </button>
 
+        {/* Icon bubble */}
         <div className="absolute bottom-[-18px] left-5 flex h-14 w-14 items-center justify-center rounded-full border-4 border-white bg-white text-2xl shadow-md">
           {space.icon}
         </div>
@@ -1471,8 +1477,8 @@ function SpaceCard({ space }) {
 
       </div>
 
-    </button>
-  )
+    </div>
+  );
 }
 
 
@@ -1582,9 +1588,35 @@ function BuddyPage() {
 ========================================================= */
 
 function MoneyPage() {
+  const {
+    expenses,
+    addExpense,
+    deleteExpense,
+    totalExpenses,
+  } = useLifeOS();
+
+  const [newExpense, setNewExpense] = useState("");
+  const [newAmount, setNewAmount] = useState("");
+  const [newCategory, setNewCategory] = useState("Other");
+
+  function handleAddExpense() {
+    if (!newExpense.trim() || !newAmount) return;
+
+    addExpense({
+      title: newExpense,
+      amount: Number(newAmount),
+      category: newCategory,
+    });
+
+    setNewExpense("");
+    setNewAmount("");
+    setNewCategory("Other");
+  }
+
+  const income = 60000;
+  const savings = income - totalExpenses;
 
   return (
-
     <div className="space-y-7">
 
       <PageIntro
@@ -1593,33 +1625,121 @@ function MoneyPage() {
         text="Understand where your money is going and how today's decisions affect tomorrow."
       />
 
-
+      {/* Financial Summary */}
       <div className="grid gap-5 md:grid-cols-3">
 
         <DashboardStat
           icon="₹"
           label="Income"
-          value="₹60,000"
+          value={`₹${income.toLocaleString()}`}
           text="This month"
         />
 
         <DashboardStat
           icon="↗"
           label="Expenses"
-          value="₹35,000"
-          text="Planned"
+          value={`₹${totalExpenses.toLocaleString()}`}
+          text="From shared state"
         />
 
         <DashboardStat
           icon="◈"
           label="Savings"
-          value="₹25,000"
+          value={`₹${savings.toLocaleString()}`}
           text="Projected"
         />
 
       </div>
 
+      {/* Add Expense */}
+      <Panel title="Add Expense">
 
+        <div className="grid gap-3 md:grid-cols-4">
+
+          <input
+            value={newExpense}
+            onChange={(e) => setNewExpense(e.target.value)}
+            placeholder="Expense name"
+            className="rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-indigo-300"
+          />
+
+          <input
+            type="number"
+            value={newAmount}
+            onChange={(e) => setNewAmount(e.target.value)}
+            placeholder="Amount"
+            className="rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-indigo-300"
+          />
+
+          <select
+            value={newCategory}
+            onChange={(e) => setNewCategory(e.target.value)}
+            className="rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-indigo-300"
+          >
+            <option>Bills</option>
+            <option>Food</option>
+            <option>Travel</option>
+            <option>Shopping</option>
+            <option>Other</option>
+          </select>
+
+          <button
+            onClick={handleAddExpense}
+            className="rounded-xl bg-indigo-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-indigo-700"
+          >
+            + Add Expense
+          </button>
+
+        </div>
+
+      </Panel>
+
+      {/* Expense List */}
+      <Panel title="Recent Expenses">
+
+        <div className="space-y-3">
+
+          {expenses.map((expense) => (
+
+            <div
+              key={expense.id}
+              className="flex items-center justify-between rounded-2xl border border-slate-100 bg-slate-50 p-4"
+            >
+
+              <div>
+                <p className="font-semibold text-slate-900">
+                  {expense.title}
+                </p>
+
+                <p className="text-xs text-slate-500">
+                  {expense.category}
+                </p>
+              </div>
+
+              <div className="flex items-center gap-4">
+
+                <span className="font-semibold text-slate-900">
+                  ₹{Number(expense.amount).toLocaleString()}
+                </span>
+
+                <button
+                  onClick={() => deleteExpense(expense.id)}
+                  className="text-xs font-semibold text-red-500 hover:text-red-700"
+                >
+                  Delete
+                </button>
+
+              </div>
+
+            </div>
+
+          ))}
+
+        </div>
+
+      </Panel>
+
+      {/* Existing Sections */}
       <div className="grid gap-6 lg:grid-cols-2">
 
         <Panel title="Monthly Spending">
@@ -1654,7 +1774,6 @@ function MoneyPage() {
 
         </Panel>
 
-
         <Panel title="Planned Purchases">
 
           <div className="space-y-3">
@@ -1681,9 +1800,8 @@ function MoneyPage() {
       </div>
 
     </div>
-  )
+  );
 }
-
 
 /* =========================================================
    TASKS
