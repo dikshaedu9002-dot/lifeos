@@ -1,6 +1,14 @@
-import { createContext, useContext, useMemo, useState } from "react";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 
 const LifeOSContext = createContext(null);
+
+const API_URL = "http://localhost:5000/api/expenses";
 
 export function LifeOSProvider({ children }) {
 
@@ -36,7 +44,6 @@ export function LifeOSProvider({ children }) {
       members: 4,
       color: "from-emerald-100 to-green-50",
     },
-
     {
       id: 2,
       title: "Goa Trip 🌴",
@@ -47,7 +54,6 @@ export function LifeOSProvider({ children }) {
       members: 6,
       color: "from-orange-100 to-amber-50",
     },
-
     {
       id: 3,
       title: "Semester 5",
@@ -58,7 +64,6 @@ export function LifeOSProvider({ children }) {
       members: 6,
       color: "from-violet-100 to-purple-50",
     },
-
     {
       id: 4,
       title: "Riya's Birthday 🎉",
@@ -69,7 +74,6 @@ export function LifeOSProvider({ children }) {
       members: 3,
       color: "from-pink-100 to-rose-50",
     },
-
     {
       id: 5,
       title: "Manali Camping 🏕️",
@@ -110,57 +114,99 @@ export function LifeOSProvider({ children }) {
   };
 
 
-  // =========================
-  // SHARED EXPENSES STATE
-  // =========================
+  // =========================================
+  // EXPENSES - MONGODB + REST API
+  // =========================================
 
-  const [expenses, setExpenses] = useState([
-    {
-      id: 1,
-      title: "Electricity Bill",
-      amount: 2500,
-      category: "Bills",
-    },
-
-    {
-      id: 2,
-      title: "Mobile Recharge",
-      amount: 599,
-      category: "Bills",
-    },
-
-    {
-      id: 3,
-      title: "Groceries",
-      amount: 3500,
-      category: "Food",
-    },
-  ]);
+  const [expenses, setExpenses] = useState([]);
 
 
   // =========================
-  // ADD EXPENSE
+  // GET EXPENSES
   // =========================
 
-  const addExpense = (expense) => {
-    setExpenses((currentExpenses) => [
-      ...currentExpenses,
-      {
-        ...expense,
-        id: Date.now(),
-      },
-    ]);
+  const fetchExpenses = async () => {
+    try {
+      const response = await fetch(API_URL);
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch expenses");
+      }
+
+      const data = await response.json();
+
+      setExpenses(data);
+    } catch (error) {
+      console.error("Error fetching expenses:", error);
+    }
   };
 
 
   // =========================
-  // DELETE EXPENSE
+  // LOAD EXPENSES FROM MONGODB
   // =========================
 
-  const deleteExpense = (id) => {
-    setExpenses((currentExpenses) =>
-      currentExpenses.filter((expense) => expense.id !== id)
-    );
+  useEffect(() => {
+    fetchExpenses();
+  }, []);
+
+
+  // =========================
+  // ADD EXPENSE - POST
+  // =========================
+
+  const addExpense = async (expense) => {
+    try {
+      const response = await fetch(API_URL, {
+        method: "POST",
+
+        headers: {
+          "Content-Type": "application/json",
+        },
+
+        body: JSON.stringify(expense),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to add expense");
+      }
+
+      const newExpense = await response.json();
+
+      setExpenses((currentExpenses) => [
+        newExpense,
+        ...currentExpenses,
+      ]);
+
+      return newExpense;
+    } catch (error) {
+      console.error("Error adding expense:", error);
+    }
+  };
+
+
+  // =========================
+  // DELETE EXPENSE - DELETE
+  // =========================
+
+  const deleteExpense = async (id) => {
+    try {
+      const response = await fetch(`${API_URL}/${id}`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to delete expense");
+      }
+
+      setExpenses((currentExpenses) =>
+        currentExpenses.filter(
+          (expense) => expense._id !== id
+        )
+      );
+    } catch (error) {
+      console.error("Error deleting expense:", error);
+    }
   };
 
 
@@ -169,7 +215,8 @@ export function LifeOSProvider({ children }) {
   // =========================
 
   const totalExpenses = expenses.reduce(
-    (total, expense) => total + Number(expense.amount),
+    (total, expense) =>
+      total + Number(expense.amount),
     0
   );
 
@@ -196,6 +243,7 @@ export function LifeOSProvider({ children }) {
       // Expenses
       expenses,
       setExpenses,
+      fetchExpenses,
       addExpense,
       deleteExpense,
       totalExpenses,
@@ -227,7 +275,6 @@ export function LifeOSProvider({ children }) {
 // =========================
 
 export function useLifeOS() {
-
   const context = useContext(LifeOSContext);
 
   if (!context) {

@@ -23,26 +23,272 @@ const menuItems = [
 ========================================================= */
 
 function App() {
+  const [page, setPage] = useState("landing");
 
-  const [page, setPage] = useState("landing")
+  const [token, setToken] = useState(() =>
+    localStorage.getItem("lifeos_token")
+  );
 
+  // LANDING PAGE
   if (page === "landing") {
     return (
       <LandingPage
-        startApp={() => setPage("dashboard")}
+        startApp={() => {
+          if (token) {
+            setPage("dashboard");
+          } else {
+            setPage("login");
+          }
+        }}
       />
-    )
+    );
   }
 
+  // LOGIN PAGE
+  if (page === "login") {
+    return (
+      <LoginPage
+        onLogin={(newToken) => {
+          localStorage.setItem("lifeos_token", newToken);
+          setToken(newToken);
+          setPage("dashboard");
+        }}
+        goHome={() => setPage("landing")}
+      />
+    );
+  }
+
+  // DASHBOARD
   return (
     <Dashboard
       page={page}
       setPage={setPage}
       goHome={() => setPage("landing")}
+      onLogout={() => {
+        localStorage.removeItem("lifeos_token");
+        setToken(null);
+        setPage("login");
+      }}
     />
-  )
+  );
 }
 
+/* =========================================================
+   LOGIN PAGE
+========================================================= */
+
+function LoginPage({ onLogin, goHome }) {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  async function handleLogin(e) {
+    e.preventDefault();
+
+    setError("");
+    setLoading(true);
+
+    try {
+      const response = await fetch(
+        "http://localhost:5000/api/auth/login",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            email,
+            password,
+          }),
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setError(data.message || "Login failed");
+        return;
+      }
+
+      onLogin(data.token);
+    } catch (error) {
+      setError("Unable to connect to the server.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div className="flex min-h-screen bg-[#f8f9fc]">
+
+      {/* LEFT SIDE */}
+      <div className="hidden flex-1 bg-slate-950 p-14 text-white lg:flex lg:flex-col">
+
+        <button
+          onClick={goHome}
+          className="flex w-fit items-center gap-3"
+        >
+          <LifeLogo />
+
+          <div className="text-left">
+            <p className="text-xl font-bold">LifeOS</p>
+            <p className="text-xs text-slate-400">
+              Your life, organized.
+            </p>
+          </div>
+        </button>
+
+        <div className="mt-20 max-w-2xl">
+
+  <p className="text-sm font-bold uppercase tracking-[0.2em] text-indigo-300">
+    LIFE, ORGANIZED
+  </p>
+
+  <h1 className="mt-5 text-5xl font-bold leading-tight">
+    One place for the things
+    <span className="block text-slate-400">
+      you normally manage separately.
+    </span>
+  </h1>
+
+  <p className="mt-6 max-w-xl text-lg leading-8 text-slate-400">
+    Money, tasks, documents, home, and shared plans —
+    organized together so life feels a little easier to manage.
+  </p>
+
+
+  {/* Motivational Row */}
+  <div className="mt-10 flex flex-wrap items-center gap-x-8 gap-y-4 text-sm text-slate-200">
+
+    <div className="flex items-center gap-2">
+      <span className="text-xl text-indigo-300">✧</span>
+      <span>Plan smarter</span>
+    </div>
+
+    <div className="flex items-center gap-2">
+      <span className="text-xl text-indigo-300">✓</span>
+      <span>Stay organized</span>
+    </div>
+
+    <div className="flex items-center gap-2">
+      <span className="text-xl text-indigo-300">▥</span>
+      <span>Make progress</span>
+    </div>
+
+    <div className="flex items-center gap-2">
+      <span className="text-xl text-indigo-300">♡</span>
+      <span>Live better</span>
+    </div>
+
+  </div>
+
+</div>
+
+</div>
+
+      {/* RIGHT SIDE */}
+      <div className="flex flex-1 items-center justify-center p-6 sm:p-10">
+
+        <div className="w-full max-w-md">
+
+          <button
+            onClick={goHome}
+            className="mb-10 flex items-center gap-3 lg:hidden"
+          >
+            <LifeLogo />
+            <span className="text-xl font-bold">
+              LifeOS
+            </span>
+          </button>
+
+
+          <p className="text-sm font-bold uppercase tracking-[0.18em] text-indigo-600">
+            Sign in
+          </p>
+
+          <h2 className="mt-3 text-4xl font-bold tracking-tight text-slate-950">
+            Welcome back
+          </h2>
+
+          <p className="mt-3 text-slate-500">
+            Enter your account details to continue to LifeOS.
+          </p>
+
+
+          <form
+            onSubmit={handleLogin}
+            className="mt-9 space-y-5"
+          >
+
+            {/* EMAIL */}
+            <div>
+              <label className="text-sm font-bold text-slate-700">
+                Email
+              </label>
+
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="Enter your email"
+                required
+                className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-5 py-4 outline-none transition focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
+              />
+            </div>
+
+
+            {/* PASSWORD */}
+            <div>
+              <label className="text-sm font-bold text-slate-700">
+                Password
+              </label>
+
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Enter your password"
+                required
+                className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-5 py-4 outline-none transition focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
+              />
+            </div>
+
+
+            {/* ERROR MESSAGE */}
+            {error && (
+              <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-600">
+                ⚠ {error}
+              </div>
+            )}
+
+
+            {/* LOGIN */}
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full rounded-2xl bg-indigo-600 px-5 py-4 font-bold text-white shadow-lg shadow-indigo-200 transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {loading ? "Signing in..." : "Sign in to LifeOS →"}
+            </button>
+
+          </form>
+
+
+          <button
+            onClick={goHome}
+            className="mt-7 w-full text-center text-sm font-semibold text-slate-400 transition hover:text-slate-700"
+          >
+            ← Back to home
+          </button>
+
+        </div>
+
+      </div>
+
+    </div>
+  );
+}
 
 /* =========================================================
    LANDING PAGE
@@ -432,7 +678,7 @@ function LandingPage({ startApp }) {
    DASHBOARD SHELL
 ========================================================= */
 
-function Dashboard({ page, setPage, goHome }) {
+function Dashboard({ page, setPage, goHome, onLogout }) {
  const {
   user,
   notifications,
@@ -486,7 +732,7 @@ function Dashboard({ page, setPage, goHome }) {
 
 
           {/* Main Navigation */}
-          <nav className="flex-1 px-3">
+          <nav className="flex-1 overflow-y-auto px-3">
 
             {menuItems.map((item) => (
 
@@ -561,78 +807,30 @@ function Dashboard({ page, setPage, goHome }) {
           </nav>
 
 
-          {/* Quick Actions */}
-          <div className="border-t border-slate-100 px-3 py-5">
+         {/* Bottom Actions */}
+<div className="shrink-0 border-t border-slate-100 bg-white p-3">
 
-            <p className="px-4 text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400">
-              Quick Actions
-            </p>
+  <button
+    onClick={() => setPage("money")}
+    className="flex w-full items-center gap-3 rounded-xl px-4 py-2.5 text-left text-sm font-semibold text-slate-500 transition hover:bg-slate-50"
+  >
+    <span className="text-lg">₹</span>
+    Add Expense
+  </button>
 
-            <button
-              className="mt-3 flex w-full items-center gap-3 rounded-xl px-4 py-2.5 text-left text-sm font-semibold text-slate-500 hover:bg-slate-50"
-            >
-              <span className="text-lg">₹</span>
-              Add Expense
-            </button>
+  <button
+    onClick={onLogout}
+    className="mt-1 flex w-full items-center gap-3 rounded-xl px-4 py-2.5 text-left text-sm font-bold text-red-500 transition hover:bg-red-50"
+  >
+    <span className="text-lg">↪</span>
+    Logout
+  </button>
 
-            <button
-              className="flex w-full items-center gap-3 rounded-xl px-4 py-2.5 text-left text-sm font-semibold text-slate-500 hover:bg-slate-50"
-            >
-              <span className="text-lg">✓</span>
-              Add Task
-            </button>
-
-            <button
-              className="flex w-full items-center gap-3 rounded-xl px-4 py-2.5 text-left text-sm font-semibold text-slate-500 hover:bg-slate-50"
-            >
-              <span className="text-lg">▤</span>
-              Upload Document
-            </button>
-
-            <button
-              onClick={() => setPage("spaces")}
-              className="flex w-full items-center gap-3 rounded-xl px-4 py-2.5 text-left text-sm font-semibold text-slate-500 hover:bg-slate-50"
-            >
-              <span className="text-lg">+</span>
-              Create Space
-            </button>
-
-          </div>
-
-
-          {/* Profile */}
-          <div className="border-t border-slate-100 p-3">
-
-            <button className="flex w-full items-center gap-3 rounded-2xl border border-slate-200 p-3 text-left transition hover:bg-slate-50">
-
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-violet-600 font-bold text-white">
-                D
-              </div>
-
-              <div className="min-w-0">
-
-                <p className="truncate text-sm font-bold">
-                  Diksha
-                </p>
-
-                <p className="text-[11px] text-slate-400">
-                  View Profile
-                </p>
-
-              </div>
-
-              <span className="ml-auto text-lg text-slate-400">
-                ⚙
-              </span>
-
-            </button>
-
-          </div>
+</div>
 
         </div>
 
       </aside>
-
 
       {/* =====================================================
           MOBILE HEADER
@@ -1702,7 +1900,7 @@ function MoneyPage() {
           {expenses.map((expense) => (
 
             <div
-              key={expense.id}
+              key={expense._id}
               className="flex items-center justify-between rounded-2xl border border-slate-100 bg-slate-50 p-4"
             >
 
@@ -1723,7 +1921,7 @@ function MoneyPage() {
                 </span>
 
                 <button
-                  onClick={() => deleteExpense(expense.id)}
+                  onClick={() => deleteExpense(expense._id)}
                   className="text-xs font-semibold text-red-500 hover:text-red-700"
                 >
                   Delete
