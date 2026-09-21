@@ -21,54 +21,22 @@ const menuItems = [
 /* =========================================================
    APP
 ========================================================= */
-
 function App() {
   const [page, setPage] = useState("landing");
 
-  const [token, setToken] = useState(() =>
-    localStorage.getItem("lifeos_token")
-  );
-
-  // LANDING PAGE
   if (page === "landing") {
     return (
       <LandingPage
-        startApp={() => {
-          if (token) {
-            setPage("dashboard");
-          } else {
-            setPage("login");
-          }
-        }}
+        startApp={() => setPage("dashboard")}
       />
     );
   }
 
-  // LOGIN PAGE
-  if (page === "login") {
-    return (
-      <LoginPage
-        onLogin={(newToken) => {
-          localStorage.setItem("lifeos_token", newToken);
-          setToken(newToken);
-          setPage("dashboard");
-        }}
-        goHome={() => setPage("landing")}
-      />
-    );
-  }
-
-  // DASHBOARD
   return (
     <Dashboard
       page={page}
       setPage={setPage}
       goHome={() => setPage("landing")}
-      onLogout={() => {
-        localStorage.removeItem("lifeos_token");
-        setToken(null);
-        setPage("login");
-      }}
     />
   );
 }
