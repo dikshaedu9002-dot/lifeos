@@ -1,3 +1,4 @@
+
 import {
   createContext,
   useContext,
@@ -5,13 +6,14 @@ import {
   useMemo,
   useState,
 } from "react";
+import { io } from "socket.io-client";
 
 const LifeOSContext = createContext(null);
 
 const API_URL = "http://localhost:5000/api/expenses";
+const SOCKET_URL = "http://localhost:5000";
 
 export function LifeOSProvider({ children }) {
-
   // =========================
   // USER STATE
   // =========================
@@ -21,13 +23,47 @@ export function LifeOSProvider({ children }) {
     greeting: "Good evening",
   });
 
-
   // =========================
   // NOTIFICATION STATE
   // =========================
 
-  const [notifications, setNotifications] = useState(3);
+  const [notifications, setNotifications] = useState(0);
+  const [notificationList, setNotificationList] = useState([]);
 
+  // Add a new real-time notification
+  const addNotification = (title, message) => {
+    const newNotification = {
+      id: crypto.randomUUID(),
+      title,
+      message,
+      time: new Date().toLocaleTimeString(),
+      read: false,
+    };
+
+    setNotificationList((current) =>
+      [newNotification, ...current].slice(0, 20)
+    );
+
+    setNotifications((count) => count + 1);
+  };
+
+  // Mark all notifications as read
+  const markNotificationsAsRead = () => {
+    setNotificationList((current) =>
+      current.map((notification) => ({
+        ...notification,
+        read: true,
+      }))
+    );
+
+    setNotifications(0);
+  };
+
+  // Clear all notifications
+  const clearNotifications = () => {
+    setNotificationList([]);
+    setNotifications(0);
+  };
 
   // =========================
   // SHARED SPACES STATE
@@ -86,7 +122,6 @@ export function LifeOSProvider({ children }) {
     },
   ]);
 
-
   // =========================
   // ADD SPACE
   // =========================
@@ -102,7 +137,6 @@ export function LifeOSProvider({ children }) {
     ]);
   };
 
-
   // =========================
   // DELETE SPACE
   // =========================
@@ -113,13 +147,11 @@ export function LifeOSProvider({ children }) {
     );
   };
 
-
   // =========================================
   // EXPENSES - MONGODB + REST API
   // =========================================
 
   const [expenses, setExpenses] = useState([]);
-
 
   // =========================
   // GET EXPENSES
@@ -134,13 +166,11 @@ export function LifeOSProvider({ children }) {
       }
 
       const data = await response.json();
-
       setExpenses(data);
     } catch (error) {
       console.error("Error fetching expenses:", error);
     }
   };
-
 
   // =========================
   // LOAD EXPENSES FROM MONGODB
@@ -150,6 +180,68 @@ export function LifeOSProvider({ children }) {
     fetchExpenses();
   }, []);
 
+  // =========================================
+  // SOCKET.IO - REAL-TIME COMMUNICATION
+  // =========================================
+
+  useEffect(() => {
+    const socket = io(SOCKET_URL);
+
+    socket.on("connect", () => {
+      console.log("Socket.IO connected:", socket.id);
+      fetchExpenses();
+    });
+
+    // Real-time expense added event
+    socket.on("expenseAdded", (newExpense) => {
+      setExpenses((currentExpenses) => {
+        const alreadyExists = currentExpenses.some(
+          (expense) => expense._id === newExpense._id
+        );
+
+        if (alreadyExists) {
+          return currentExpenses;
+        }
+
+        return [newExpense, ...currentExpenses];
+      });
+
+      // Generate real-time notification
+      addNotification(
+        "New Expense Added",
+        `${newExpense.title} — ₹${Number(
+          newExpense.amount
+        ).toLocaleString("en-IN")} added successfully.`
+      );
+    });
+
+    // Real-time expense deleted event
+    socket.on("expenseDeleted", (deletedId) => {
+      setExpenses((currentExpenses) =>
+        currentExpenses.filter(
+          (expense) => expense._id !== deletedId
+        )
+      );
+
+      // Generate real-time notification
+      addNotification(
+        "Expense Deleted",
+        "An expense was removed from your Money page."
+      );
+    });
+
+    socket.on("connect_error", (error) => {
+      console.error(
+        "Socket.IO connection error:",
+        error.message
+      );
+    });
+
+    // Disconnect when provider unmounts
+    return () => {
+      socket.disconnect();
+    };
+  }, []);
 
   // =========================
   // ADD EXPENSE - POST
@@ -159,11 +251,9 @@ export function LifeOSProvider({ children }) {
     try {
       const response = await fetch(API_URL, {
         method: "POST",
-
         headers: {
           "Content-Type": "application/json",
         },
-
         body: JSON.stringify(expense),
       });
 
@@ -173,17 +263,21 @@ export function LifeOSProvider({ children }) {
 
       const newExpense = await response.json();
 
-      setExpenses((currentExpenses) => [
-        newExpense,
-        ...currentExpenses,
-      ]);
+      setExpenses((currentExpenses) => {
+        const alreadyExists = currentExpenses.some(
+          (item) => item._id === newExpense._id
+        );
+
+        return alreadyExists
+          ? currentExpenses
+          : [newExpense, ...currentExpenses];
+      });
 
       return newExpense;
     } catch (error) {
       console.error("Error adding expense:", error);
     }
   };
-
 
   // =========================
   // DELETE EXPENSE - DELETE
@@ -209,17 +303,14 @@ export function LifeOSProvider({ children }) {
     }
   };
 
-
   // =========================
   // TOTAL EXPENSES
   // =========================
 
   const totalExpenses = expenses.reduce(
-    (total, expense) =>
-      total + Number(expense.amount),
+    (total, expense) => total + Number(expense.amount),
     0
   );
-
 
   // =========================
   // CONTEXT VALUE
@@ -227,14 +318,18 @@ export function LifeOSProvider({ children }) {
 
   const value = useMemo(
     () => ({
-      // User
       user,
 
       // Notifications
       notifications,
       setNotifications,
+      notificationList,
+      setNotificationList,
+      addNotification,
+      markNotificationsAsRead,
+      clearNotifications,
 
-      // Spaces
+      // Shared spaces
       spaces,
       setSpaces,
       addSpace,
@@ -251,12 +346,12 @@ export function LifeOSProvider({ children }) {
     [
       user,
       notifications,
+      notificationList,
       spaces,
       expenses,
       totalExpenses,
     ]
   );
-
 
   // =========================
   // PROVIDER
@@ -268,7 +363,6 @@ export function LifeOSProvider({ children }) {
     </LifeOSContext.Provider>
   );
 }
-
 
 // =========================
 // CUSTOM HOOK

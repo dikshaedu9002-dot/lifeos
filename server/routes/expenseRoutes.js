@@ -1,3 +1,4 @@
+
 import express from "express";
 import Expense from "../models/Expense.js";
 
@@ -22,17 +23,46 @@ router.post("/", async (req, res) => {
   try {
     const { title, amount, category } = req.body;
 
-    if (!title || amount === undefined || !category) {
+    // Input validation
+    if (
+      !title ||
+      typeof title !== "string" ||
+      title.trim().length < 2
+    ) {
       return res.status(400).json({
-        message: "Title, amount and category are required",
+        message: "Title must contain at least 2 characters",
+      });
+    }
+
+    if (
+      amount === undefined ||
+      typeof amount !== "number" ||
+      amount <= 0
+    ) {
+      return res.status(400).json({
+        message: "Amount must be a positive number",
+      });
+    }
+
+    if (
+      !category ||
+      typeof category !== "string" ||
+      category.trim().length === 0
+    ) {
+      return res.status(400).json({
+        message: "Valid category is required",
       });
     }
 
     const expense = await Expense.create({
-      title,
+      title: title.trim(),
       amount,
-      category,
+      category: category.trim(),
     });
+
+    // Broadcast new expense to connected clients
+    const io = req.app.get("io");
+    io.emit("expenseAdded", expense);
 
     res.status(201).json(expense);
   } catch (error) {
@@ -53,6 +83,10 @@ router.delete("/:id", async (req, res) => {
         message: "Expense not found",
       });
     }
+
+    // Broadcast deleted expense ID to connected clients
+    const io = req.app.get("io");
+    io.emit("expenseDeleted", expense._id.toString());
 
     res.json({
       message: "Expense deleted successfully",

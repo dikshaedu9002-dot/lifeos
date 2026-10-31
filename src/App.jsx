@@ -21,22 +21,54 @@ const menuItems = [
 /* =========================================================
    APP
 ========================================================= */
+
 function App() {
   const [page, setPage] = useState("landing");
 
+  const [token, setToken] = useState(() =>
+    localStorage.getItem("lifeos_token")
+  );
+
+  // LANDING PAGE
   if (page === "landing") {
     return (
       <LandingPage
-        startApp={() => setPage("dashboard")}
+        startApp={() => {
+          if (token) {
+            setPage("dashboard");
+          } else {
+            setPage("login");
+          }
+        }}
       />
     );
   }
 
+  // LOGIN PAGE
+  if (page === "login") {
+    return (
+      <LoginPage
+        onLogin={(newToken) => {
+          localStorage.setItem("lifeos_token", newToken);
+          setToken(newToken);
+          setPage("dashboard");
+        }}
+        goHome={() => setPage("landing")}
+      />
+    );
+  }
+
+  // DASHBOARD
   return (
     <Dashboard
       page={page}
       setPage={setPage}
       goHome={() => setPage("landing")}
+      onLogout={() => {
+        localStorage.removeItem("lifeos_token");
+        setToken(null);
+        setPage("login");
+      }}
     />
   );
 }
@@ -46,40 +78,51 @@ function App() {
 ========================================================= */
 
 function LoginPage({ onLogin, goHome }) {
+  const [isRegistering, setIsRegistering] = useState(false);
+  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
   const [loading, setLoading] = useState(false);
 
-  async function handleLogin(e) {
+  async function handleSubmit(e) {
     e.preventDefault();
 
     setError("");
+    setSuccess("");
     setLoading(true);
 
     try {
       const response = await fetch(
-        "http://localhost:5000/api/auth/login",
+        `http://localhost:5000/api/auth/${isRegistering ? "register" : "login"}`,
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({
-            email,
-            password,
-          }),
+          body: JSON.stringify(
+            isRegistering
+              ? { name, email, password }
+              : { email, password }
+          ),
         }
       );
 
       const data = await response.json();
 
       if (!response.ok) {
-        setError(data.message || "Login failed");
+        setError(data.message || (isRegistering ? "Registration failed" : "Login failed"));
         return;
       }
 
-      onLogin(data.token);
+      if (isRegistering) {
+        setIsRegistering(false);
+        setPassword("");
+        setSuccess("Account created. Sign in with your new credentials.");
+      } else {
+        onLogin(data.token);
+      }
     } catch (error) {
       setError("Unable to connect to the server.");
     } finally {
@@ -172,34 +215,57 @@ function LoginPage({ onLogin, goHome }) {
 
 
           <p className="text-sm font-bold uppercase tracking-[0.18em] text-indigo-600">
-            Sign in
+            {isRegistering ? "Create account" : "Sign in"}
           </p>
 
           <h2 className="mt-3 text-4xl font-bold tracking-tight text-slate-950">
-            Welcome back
+            {isRegistering ? "Join LifeOS" : "Welcome back"}
           </h2>
 
           <p className="mt-3 text-slate-500">
-            Enter your account details to continue to LifeOS.
+            {isRegistering
+              ? "Create an account to get started with LifeOS."
+              : "Enter your account details to continue to LifeOS."}
           </p>
 
 
           <form
-            onSubmit={handleLogin}
+            onSubmit={handleSubmit}
             className="mt-9 space-y-5"
           >
 
+            {isRegistering && (
+              <div>
+                <label className="text-sm font-bold text-slate-700" htmlFor="register-name">
+                  Name
+                </label>
+
+                <input
+                  id="register-name"
+                  type="text"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="Enter your name"
+                  autoComplete="name"
+                  required
+                  className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-5 py-4 outline-none transition focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
+                />
+              </div>
+            )}
+
             {/* EMAIL */}
             <div>
-              <label className="text-sm font-bold text-slate-700">
+              <label className="text-sm font-bold text-slate-700" htmlFor="auth-email">
                 Email
               </label>
 
               <input
+                id="auth-email"
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="Enter your email"
+                autoComplete="email"
                 required
                 className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-5 py-4 outline-none transition focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
               />
@@ -208,24 +274,34 @@ function LoginPage({ onLogin, goHome }) {
 
             {/* PASSWORD */}
             <div>
-              <label className="text-sm font-bold text-slate-700">
+              <label className="text-sm font-bold text-slate-700" htmlFor="auth-password">
                 Password
               </label>
 
               <input
+                id="auth-password"
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Enter your password"
+                autoComplete={isRegistering ? "new-password" : "current-password"}
+                minLength={isRegistering ? 6 : undefined}
                 required
                 className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-5 py-4 outline-none transition focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
               />
             </div>
 
 
+            {success && (
+              <div role="status" className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700">
+                {success}
+              </div>
+            )}
+
+
             {/* ERROR MESSAGE */}
             {error && (
-              <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-600">
+              <div role="alert" className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-600">
                 ⚠ {error}
               </div>
             )}
@@ -237,11 +313,28 @@ function LoginPage({ onLogin, goHome }) {
               disabled={loading}
               className="w-full rounded-2xl bg-indigo-600 px-5 py-4 font-bold text-white shadow-lg shadow-indigo-200 transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {loading ? "Signing in..." : "Sign in to LifeOS →"}
+              {loading
+                ? (isRegistering ? "Creating account..." : "Signing in...")
+                : (isRegistering ? "Create account" : "Sign in to LifeOS →")}
             </button>
 
           </form>
 
+
+          <p className="mt-6 text-center text-sm text-slate-500">
+            {isRegistering ? "Already have an account?" : "New to LifeOS?"}{" "}
+            <button
+              type="button"
+              onClick={() => {
+                setIsRegistering((current) => !current);
+                setError("");
+                setSuccess("");
+              }}
+              className="font-bold text-indigo-600 transition hover:text-indigo-800"
+            >
+              {isRegistering ? "Sign in" : "Register new user"}
+            </button>
+          </p>
 
           <button
             onClick={goHome}
@@ -650,9 +743,14 @@ function Dashboard({ page, setPage, goHome, onLogout }) {
  const {
   user,
   notifications,
+  notificationList,
+  markNotificationsAsRead,
+  clearNotifications,
   spaces,
   totalExpenses,
 } = useLifeOS();
+
+const [showNotifications, setShowNotifications] = useState(false);
   const currentItem =
     menuItems.find((item) => item.id === page) || menuItems[0]
 
@@ -908,13 +1006,77 @@ function Dashboard({ page, setPage, goHome, onLogout }) {
 
             <div className="ml-auto flex items-center gap-5">
 
-              <button className="relative flex h-11 w-11 items-center justify-center rounded-xl text-xl text-slate-500 transition hover:bg-slate-50">
+              <div className="relative">
+  <button
+    type="button"
+    onClick={() => setShowNotifications((open) => !open)}
+    className="relative flex h-11 w-11 items-center justify-center rounded-xl text-xl text-slate-500 transition hover:bg-slate-50"
+    aria-label="Notifications"
+  >
+    🔔
 
-                ♧
+    {notifications > 0 && (
+      <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">
+        {notifications}
+      </span>
+    )}
+  </button>
 
-                <span className="absolute right-2 top-2 h-2.5 w-2.5 rounded-full bg-rose-500" />
+  {showNotifications && (
+    <div className="absolute right-0 top-14 z-50 w-80 max-w-[calc(100vw-2rem)] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl">
+      <div className="flex items-center justify-between border-b border-slate-100 p-4">
+        <h3 className="font-bold text-slate-900">
+          Notifications
+        </h3>
 
-              </button>
+        <button
+          onClick={markNotificationsAsRead}
+          className="text-xs font-semibold text-indigo-600"
+        >
+          Mark all read
+        </button>
+      </div>
+
+      <div className="max-h-80 overflow-y-auto">
+        {notificationList.length === 0 ? (
+          <p className="p-6 text-center text-sm text-slate-400">
+            No notifications yet
+          </p>
+        ) : (
+          notificationList.map((notification) => (
+            <div
+              key={notification.id}
+              className={`border-b border-slate-100 p-4 ${
+                notification.read ? "bg-white" : "bg-indigo-50"
+              }`}
+            >
+              <p className="text-sm font-bold text-slate-900">
+                {notification.title}
+              </p>
+
+              <p className="mt-1 text-sm text-slate-600">
+                {notification.message}
+              </p>
+
+              <p className="mt-2 text-xs text-slate-400">
+                {notification.time}
+              </p>
+            </div>
+          ))
+        )}
+      </div>
+
+      {notificationList.length > 0 && (
+        <button
+          onClick={clearNotifications}
+          className="w-full border-t border-slate-100 p-3 text-sm font-semibold text-red-500 hover:bg-red-50"
+        >
+          Clear All Notifications
+        </button>
+      )}
+    </div>
+  )}
+</div>
 
 
               <button className="flex h-11 w-11 items-center justify-center rounded-xl text-xl text-slate-500 transition hover:bg-slate-50">
