@@ -10,8 +10,8 @@ import { io } from "socket.io-client";
 
 const LifeOSContext = createContext(null);
 
-const API_URL = "http://localhost:5000/api/expenses";
-const SOCKET_URL = "http://localhost:5000";
+const API_URL = "https://lifeos-backend-4ndj.onrender.com/api/expenses";
+const SOCKET_URL = "https://lifeos-backend-4ndj.onrender.com";
 
 export function LifeOSProvider({ children }) {
   // =========================

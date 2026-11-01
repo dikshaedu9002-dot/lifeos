@@ -95,7 +95,7 @@ function LoginPage({ onLogin, goHome }) {
 
     try {
       const response = await fetch(
-        `http://localhost:5000/api/auth/${isRegistering ? "register" : "login"}`,
+        `https://lifeos-backend-4ndj.onrender.com/api/auth/${isRegistering ? "register" : "login"}`,
         {
           method: "POST",
           headers: {
